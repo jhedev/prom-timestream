@@ -1,0 +1,51 @@
+version: '3.7'
+
+volumes:
+    prometheus_data: {}
+
+networks:
+  all:
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.5.0
+    volumes:
+    - .:/etc/prometheus/
+    - prometheus_data:/prometheus
+    command:
+    - '--config.file=/etc/prometheus/prom.yml'
+    - '--storage.tsdb.path=/prometheus'
+    ports:
+    - 9090:9090
+    networks:
+    - all
+    restart: always
+
+  node-exporter:
+    image: prom/node-exporter
+    volumes:
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /:/rootfs:ro
+    command:
+    - '--path.procfs=/host/proc'
+    - '--path.sysfs=/host/sys'
+    - --collector.filesystem.ignored-mount-points
+    - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+    - 9100:9100
+    networks:
+    - all
+    restart: always
+
+  prom-timestream-adapter:
+    image: jhedev/prom-timestream
+    networks:
+    - all
+    restart: always
+    environment:
+      AWS_REGION: eu-west-1 # adjust if needed
+      AWS_ACCESS_KEY_ID: "<insert_key_id>"
+      AWS_SECRET_ACCESS_KEY: "<insert_secret_access_key>"
+      AWS_SESSION_TOKEN: "<insert_session_token>"
