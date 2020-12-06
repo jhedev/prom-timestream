@@ -3,6 +3,7 @@ module github.com/jhedev/prom-timestream
 go 1.15
 
 require (
+	github.com/aws/aws-sdk-go v1.36.2
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/snappy v0.0.2
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
