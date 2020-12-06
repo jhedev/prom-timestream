@@ -22,13 +22,28 @@ type Adapter struct {
 	logger  log.FieldLogger
 	timeout time.Duration
 
-	databaseName string
-	tableName    string
-	writeClient  timestreamwriteiface.TimestreamWriteAPI
-	queryClient  timestreamqueryiface.TimestreamQueryAPI
+	databaseName   string
+	tableName      string
+	prefix, suffix string
+	writeClient    timestreamwriteiface.TimestreamWriteAPI
+	queryClient    timestreamqueryiface.TimestreamQueryAPI
 }
 
 type Option func(*Adapter) error
+
+func WithPrefix(pre string) Option {
+	return func(a *Adapter) error {
+		a.prefix = pre
+		return nil
+	}
+}
+
+func WithSuffix(suf string) Option {
+	return func(a *Adapter) error {
+		a.suffix = suf
+		return nil
+	}
+}
 
 func New(databaseName, tableName string, sess *session.Session, opts ...Option) (*Adapter, error) {
 	a := &Adapter{
@@ -37,6 +52,8 @@ func New(databaseName, tableName string, sess *session.Session, opts ...Option) 
 
 		databaseName: databaseName,
 		tableName:    tableName,
+		prefix:       "prom",
+		suffix:       "prom",
 		writeClient:  timestreamwrite.New(sess),
 		queryClient:  timestreamquery.New(sess),
 	}
@@ -61,9 +78,14 @@ func New(databaseName, tableName string, sess *session.Session, opts ...Option) 
 }
 
 func (a *Adapter) writeSeries(ctx context.Context, series *prompb.TimeSeries) error {
-	common, records, err := seriesToRecords(series)
+	common, records, err := seriesToRecords(a.prefix, a.suffix, series)
 	if err != nil {
 		return err
+	}
+
+	if len(records) == 0 {
+		a.logger.Infof("no records to write. skipping...")
+		return nil
 	}
 
 	ctxx, cancel := context.WithTimeout(ctx, a.timeout)
